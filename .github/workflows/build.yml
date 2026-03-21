@@ -11,6 +11,10 @@ on:
   push:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -56,3 +60,4 @@ jobs:
         with:
           sarif_file: semgrep.sarif
           category: semgrep
+          token: ${{ secrets.GITHUB_TOKEN }}
