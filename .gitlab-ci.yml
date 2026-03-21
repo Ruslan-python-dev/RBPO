@@ -1,9 +1,17 @@
 stages:
   - build
+  - test
+
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
     - when: never
+
+variables:
+  # Чтобы semgrep использовал правила сообщества
+  SEMGREP_RULES: auto
+
+# Работа для сборки (существующая из main)
 build:
   stage: build
   tags:
@@ -15,3 +23,35 @@ build:
     paths:
       - ./target/*.jar
     expire_in: 1 week
+
+# Работа SAST с Semgrep (из задания 3)
+semgrep-sast:
+  stage: test
+  image: returntocorp/semgrep:latest
+  script:
+    - semgrep ci --sarif -o semgrep.sarif
+  artifacts:
+    reports:
+      sast: semgrep.sarif
+    paths:
+      - semgrep.sarif
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - master
+
+# Работа SCA с OWASP Dependency-Check (из задания 4)
+dependency-check:
+  stage: test
+  image: maven:3.9-eclipse-temurin-21
+  script:
+    - mvn dependency-check:check
+  artifacts:
+    paths:
+      - ./target/dependency-check/dependency-check-report.html
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - master

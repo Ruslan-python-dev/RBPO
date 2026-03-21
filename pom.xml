@@ -94,6 +94,27 @@
                     </excludes>
                 </configuration>
             </plugin>
+            
+            <!-- OWASP Dependency Check Plugin -->
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>10.0.4</version>
+                <configuration>
+                    <format>HTML</format>
+                    <outputDirectory>${project.build.directory}/dependency-check</outputDirectory>
+                    <suppressionFile>${project.basedir}/dependency-suppression.xml</suppressionFile>
+                    <failBuildOnCVSS>9.0</failBuildOnCVSS>
+                    <assemblyAnalyzerEnabled>false</assemblyAnalyzerEnabled>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
