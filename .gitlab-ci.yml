@@ -2,21 +2,29 @@ stages:
   - build
   - test
 
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    - when: never
+
 variables:
   # Чтобы semgrep использовал правила сообщества
   SEMGREP_RULES: auto
 
-# Работа для сборки (пример, замените на вашу)
-build-job:
+# Работа для сборки (существующая из main)
+build:
   stage: build
+  tags:
+    - saas-linux-small-amd64
+  image: maven:3.9-eclipse-temurin-21
   script:
-    - echo "Building the application..."
-    # Здесь ваши команды сборки
+    - mvn clean compile test package
   artifacts:
     paths:
-      - build/
+      - ./target/*.jar
+    expire_in: 1 week
 
-# Работа SAST с Semgrep
+# Работа SAST с Semgrep (ваша новая)
 semgrep-sast:
   stage: test
   image: returntocorp/semgrep:latest
