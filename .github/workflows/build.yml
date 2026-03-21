@@ -1,4 +1,5 @@
-name: Build and Test
+name: Build, Test and SAST
+
 on:
   pull_request:
     branches:
@@ -7,6 +8,13 @@ on:
       - opened          
       - synchronize     
       - reopened        
+  push:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,3 +31,48 @@ jobs:
         with:
           name: application-jar
           path: ./target/*.jar
+
+  sast:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Semgrep
+        run: pip install semgrep
+      
+      - name: Run Semgrep
+        id: semgrep
+        continue-on-error: true
+        run: semgrep scan --config=auto --sarif -o semgrep.sarif || true
+      
+      - name: Create empty SARIF if needed
+        if: always()
+        run: |
+          if [ ! -f semgrep.sarif ]; then
+            echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Semgrep","rules":[]}},"results":[]}]}' > semgrep.sarif
+          fi
+      
+      - name: Upload SARIF to GitHub
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  sca:
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: maven:3.9-eclipse-temurin-21
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run OWASP Dependency Check
+        run: mvn dependency-check:check
+      
+      - name: Upload Dependency Check Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: ./target/dependency-check/dependency-check-report.html
