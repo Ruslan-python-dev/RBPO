@@ -1,0 +1,34 @@
+stages:
+  - build
+  - test
+
+variables:
+  # Чтобы semgrep использовал правила сообщества
+  SEMGREP_RULES: auto
+
+# Работа для сборки (пример, замените на вашу)
+build-job:
+  stage: build
+  script:
+    - echo "Building the application..."
+    # Здесь ваши команды сборки
+  artifacts:
+    paths:
+      - build/
+
+# Работа SAST с Semgrep
+semgrep-sast:
+  stage: test
+  image: returntocorp/semgrep:latest
+  script:
+    - semgrep ci --sarif -o semgrep.sarif
+  artifacts:
+    reports:
+      sast: semgrep.sarif
+    paths:
+      - semgrep.sarif
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - master
