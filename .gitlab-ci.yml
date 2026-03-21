@@ -24,7 +24,7 @@ build:
       - ./target/*.jar
     expire_in: 1 week
 
-# Работа SAST с Semgrep (ваша новая)
+# Работа SAST с Semgrep (из задания 3)
 semgrep-sast:
   stage: test
   image: returntocorp/semgrep:latest
@@ -35,6 +35,21 @@ semgrep-sast:
       sast: semgrep.sarif
     paths:
       - semgrep.sarif
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - master
+
+# Работа SCA с OWASP Dependency-Check (из задания 4)
+dependency-check:
+  stage: test
+  image: maven:3.9-eclipse-temurin-21
+  script:
+    - mvn dependency-check:check
+  artifacts:
+    paths:
+      - ./target/dependency-check/dependency-check-report.html
     expire_in: 1 week
   only:
     - merge_requests
