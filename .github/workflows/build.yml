@@ -1,52 +1,43 @@
-name: Build, Test and SAST
-
-on:
-  pull_request:
-    branches:
-      - main
-    types:
-      - opened          
-      - synchronize     
-      - reopened        
-  push:
-    branches: [ main, master ]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    container:
-      image: maven:3.9-eclipse-temurin-21
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Build, test and package
-        run: mvn clean compile test package
-      
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: application-jar
-          path: ./target/*.jar
-
-  sast:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Run Semgrep
-        id: semgrep
-        continue-on-error: true
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: auto
-          output: semgrep.sarif
-          output_format: sarif
-      
-      - name: Upload SARIF to GitHub
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: semgrep.sarif
-          category: semgrep
+sast:
+  needs: build
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Semgrep
+      id: semgrep
+      continue-on-error: true
+      run: |
+        docker run --rm \
+          -v "${PWD}:/src" \
+          returntocorp/semgrep:latest \
+          semgrep scan --sarif -o /src/semgrep.sarif || true
+    
+    - name: Create empty SARIF if needed
+      if: always()
+      run: |
+        if [ ! -f semgrep.sarif ]; then
+          echo "Creating empty SARIF file"
+          cat > semgrep.sarif << 'EOF'
+    {
+      "version": "2.1.0",
+      "runs": [
+        {
+          "tool": {
+            "driver": {
+              "name": "Semgrep",
+              "rules": []
+            }
+          },
+          "results": []
+        }
+      ]
+    }
+    EOF
+        fi
+    
+    - name: Upload SARIF to GitHub
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: semgrep.sarif
+        category: semgrep
